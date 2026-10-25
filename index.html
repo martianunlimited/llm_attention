@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Multi-Head Self-Attention Lab | Interactive Transformer Explainer</title>
+  <meta name="description" content="Interactive web demo visualizing Multi-Head Self-Attention in LLMs: Q, K, V projections, scaled dot-product math, coreference resolution, Anthropic induction circuits, and causal masking.">
+  <meta name="keywords" content="Self-Attention, Multi-Head Attention, Transformer, Q K V, Scaled Dot Product, Softmax, Causal Mask, Winograd Schema, Induction Heads, LLM, Deep Learning">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+</head>
+<body>
+
+  <!-- Sticky Header & Navigation -->
+  <header class="app-header">
+    <div class="container nav-wrapper">
+      <a href="#hero" class="brand-badge">
+        <div class="brand-icon">🎯</div>
+        <div class="brand-titles">
+          <span class="brand-title">Multi-Head Self-Attention</span>
+          <span class="brand-subtitle">Interactive Transformer Lab</span>
+        </div>
+      </a>
+      <nav class="main-nav" aria-label="Main Navigation">
+        <a href="#studio" class="nav-link">Attention Studio</a>
+        <a href="#matrix-view" class="nav-link">Attention Matrix</a>
+        <a href="#flow-view" class="nav-link">Bipartite Flow</a>
+        <a href="#pipeline" class="nav-link">Q-K-V Pipeline</a>
+        <a href="https://martianunlimited.github.io/llm_tokenizer/" class="nav-link" target="_blank" rel="noopener">🔤 Tokenizer</a>
+        <a href="https://martianunlimited.github.io/llm_embedding/" class="nav-link" target="_blank" rel="noopener">🧭 Embeddings</a>
+        <a href="https://github.com/martianunlimited/llm_attention" class="nav-link nav-cta" target="_blank" rel="noopener">★ GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section id="hero" class="hero-section">
+      <div class="container">
+        <div class="hero-pill">
+          <span>🧠 The Heart of the Transformer</span>
+          <span>•</span>
+          <span>Vaswani et al. (2017)</span>
+          <span>•</span>
+          <span>Anthropic Circuits (2022)</span>
+        </div>
+        <h1 class="hero-title">
+          How Transformers Think: <br>
+          <span class="gradient-text">Interactive Multi-Head Self-Attention</span>
+        </h1>
+        <p class="hero-desc">
+          Self-Attention is the mechanism that allows an LLM to dynamically connect words across a sentence. 
+          Explore how <strong>Queries ($Q$)</strong>, <strong>Keys ($K$)</strong>, and <strong>Values ($V$)</strong> compute scaled dot products, 
+          why changing a single adjective redirects pronouns (<em>Winograd Schema</em>), 
+          how <strong>Induction Circuits</strong> copy patterns in-context, and how <strong>Causal Masking</strong> prevents peeking into the future.
+        </p>
+
+        <!-- Quick Feature Badges -->
+        <div class="hero-highlights">
+          <div class="highlight-badge">
+            <span>🐾</span>
+            <span><strong>Winograd Resolution:</strong> <em>"tired"</em> $\to$ animal vs <em>"wide"</em> $\to$ street</span>
+          </div>
+          <div class="highlight-badge">
+            <span>⚡</span>
+            <span><strong>Induction Heads:</strong> In-context copying circuits $[A][B] \dots [A] \to [B]$</span>
+          </div>
+          <div class="highlight-badge">
+            <span>🔒</span>
+            <span><strong>Causal Masking:</strong> Upper-triangular $-\infty$ prevents future leakage</span>
+          </div>
+          <div class="highlight-badge">
+            <span>📐</span>
+            <span><strong>Scaled Dot Product:</strong> $\text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Studio & Interactive Controls Section -->
+    <section id="studio" class="studio-section">
+      <div class="container">
+        <div class="panel-card main-control-panel">
+          <div class="panel-header-row">
+            <div>
+              <h2 class="panel-title">1. Scenario &amp; Sentence Studio</h2>
+              <p class="panel-subtitle">Select an educational preset or type your own custom sentence below:</p>
+            </div>
+            <span class="badge-status" id="token-count-badge">11 Tokens</span>
+          </div>
+
+          <!-- Preset Scenarios Ribbon -->
+          <div class="presets-ribbon" id="presets-container" aria-label="Educational Presets">
+            <!-- Dynamically populated or static fallback buttons -->
+            <button class="preset-btn active" data-id="winograd-tired">
+              <span class="preset-icon">🐾</span>
+              <span class="preset-text">Tired Animal</span>
+            </button>
+            <button class="preset-btn" data-id="winograd-wide">
+              <span class="preset-icon">🛣️</span>
+              <span class="preset-text">Wide Street</span>
+            </button>
+            <button class="preset-btn" data-id="subject-verb">
+              <span class="preset-icon">🗝️</span>
+              <span class="preset-text">Keys &amp; Cabinet</span>
+            </button>
+            <button class="preset-btn" data-id="induction-pattern">
+              <span class="preset-icon">⚡</span>
+              <span class="preset-text">Induction Copying</span>
+            </button>
+            <button class="preset-btn" data-id="polysemy-disambiguation">
+              <span class="preset-icon">🌊</span>
+              <span class="preset-text">River Bank</span>
+            </button>
+            <button class="preset-btn" data-id="code-variable-scope">
+              <span class="preset-icon">💻</span>
+              <span class="preset-text">Code Variable Scope</span>
+            </button>
+          </div>
+
+          <!-- Input Sentence Form -->
+          <div class="sentence-input-group">
+            <input 
+              type="text" 
+              id="sentence-input" 
+              class="sentence-input" 
+              value="The animal didn't cross the street because it was too tired" 
+              placeholder="Type any sentence to compute self-attention..."
+              aria-label="Input sentence">
+            <button id="compute-btn" class="btn btn-primary">
+              <span>⚡ Compute Attention</span>
+            </button>
+          </div>
+
+          <!-- Active Tokens Visualizer Bar -->
+          <div class="tokens-chip-container" id="tokens-chip-list">
+            <!-- Token chips injected here -->
+          </div>
+
+          <!-- Interactive Control HUD -->
+          <div class="hud-controls-grid">
+            <!-- Head Selector -->
+            <div class="hud-block">
+              <label class="hud-label" for="head-selector">Attention Head Specialization:</label>
+              <div class="head-pills" id="head-pills-group">
+                <button class="head-pill" data-head="-1">Composite (Avg)</button>
+                <button class="head-pill" data-head="0">Head 0: Syntax</button>
+                <button class="head-pill active" data-head="1">Head 1: Coreference</button>
+                <button class="head-pill" data-head="2">Head 2: Induction</button>
+                <button class="head-pill" data-head="3">Head 3: Global Anchor</button>
+              </div>
+              <p class="head-desc-text" id="head-desc-display">
+                Head 1: Resolves pronouns (it, they) to their semantic antecedents via context adjectives.
+              </p>
+            </div>
+
+            <!-- Causal Masking & Scaling Toggles -->
+            <div class="hud-block">
+              <span class="hud-label">Architecture Mode:</span>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="btn-bidirectional" data-causal="false">
+                  <span>🌐 Bidirectional (BERT)</span>
+                </button>
+                <button class="toggle-btn" id="btn-causal" data-causal="true">
+                  <span>🔒 Causal Mask (GPT)</span>
+                </button>
+              </div>
+              <div class="checkbox-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="scaling-toggle" checked>
+                  <span>Scale by $\sqrt{d_k}$ ($\sqrt{8} \approx 2.828$)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Softmax Temperature Slider -->
+            <div class="hud-block">
+              <div class="slider-header">
+                <label class="hud-label" for="temp-slider">Softmax Temperature ($T$):</label>
+                <span class="slider-val-badge" id="temp-val">1.00</span>
+              </div>
+              <input 
+                type="range" 
+                id="temp-slider" 
+                min="0.10" 
+                max="2.50" 
+                step="0.05" 
+                value="1.00" 
+                class="range-slider">
+              <div class="slider-ticks">
+                <span>0.1 (Sharp / Peak)</span>
+                <span>1.0 (Standard)</span>
+                <span>2.5 (Uniform / Diffuse)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizer 1: N x N Attention Heatmap Matrix -->
+    <section id="matrix-view" class="section-block">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Visualizer 1</div>
+          <h2 class="section-title">The Attention Weight Matrix ($N \times N$)</h2>
+          <p class="section-desc">
+            Each row represents a <strong>Query token</strong> asking for context; each column represents a <strong>Key token</strong> offering context.
+            Hover over any cell $(i, j)$ to see the exact scaled dot-product math and resulting softmax attention probability.
+          </p>
+        </div>
+
+        <div class="matrix-layout">
+          <!-- The Heatmap Table / Canvas Container -->
+          <div class="matrix-card">
+            <div class="matrix-header-bar">
+              <span class="matrix-title-text" id="matrix-title">Head 1: Coreference &amp; Semantic Resolution</span>
+              <div class="matrix-legend">
+                <span class="legend-label">Weight:</span>
+                <span class="legend-scale">
+                  <span class="legend-stop stop-0">0.0</span>
+                  <span class="legend-bar"></span>
+                  <span class="legend-stop stop-1">1.0</span>
+                </span>
+                <span class="legend-masked-box" title="Causal Masked (-inf)">Hatched: Masked</span>
+              </div>
+            </div>
+
+            <div class="heatmap-scroll-container">
+              <div id="matrix-grid" class="attention-grid">
+                <!-- Heatmap cells injected dynamically via JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Mathematical Inspector Sidebar -->
+          <div class="math-inspector-card" id="math-inspector">
+            <h3 class="inspector-title">Scalar Attention Math</h3>
+            <p class="inspector-hint">Hover over any cell in the matrix to inspect its calculation breakdown:</p>
+            
+            <div class="math-breakdown-box">
+              <div class="math-tokens-header">
+                <div class="math-token-col">
+                  <span class="math-col-label">Query (Row $i$):</span>
+                  <span class="math-tok-badge" id="insp-query-tok">it [7]</span>
+                </div>
+                <span class="math-arrow">➔</span>
+                <div class="math-token-col">
+                  <span class="math-col-label">Key (Col $j$):</span>
+                  <span class="math-tok-badge" id="insp-key-tok">animal [1]</span>
+                </div>
+              </div>
+
+              <div class="math-step-row">
+                <span class="math-step-label">1. Dot Product ($q_i \cdot k_j$):</span>
+                <span class="math-step-val" id="insp-raw-score">8.420</span>
+              </div>
+              <div class="math-step-row">
+                <span class="math-step-label">2. Scaled ($\div \sqrt{d_k}$):</span>
+                <span class="math-step-val" id="insp-scaled-score">2.977</span>
+              </div>
+              <div class="math-step-row">
+                <span class="math-step-label">3. Temperature ($\div T$):</span>
+                <span class="math-step-val" id="insp-temp-val">2.977</span>
+              </div>
+              <div class="math-step-row highlight-row">
+                <span class="math-step-label">4. Softmax Attention Weight ($\alpha_{ij}$):</span>
+                <span class="math-step-val primary-val" id="insp-final-weight">0.684 (68.4%)</span>
+              </div>
+
+              <div class="math-note" id="insp-note">
+                Strong attention bond! The pronoun 'it' successfully resolves to 'animal' due to the animate predicate 'tired'.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizer 2: Bipartite Flow Graph (Rays & Arcs) -->
+    <section id="flow-view" class="section-block bg-elevated">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Visualizer 2</div>
+          <h2 class="section-title">Bipartite Attention Flow Graph</h2>
+          <p class="section-desc">
+            Visualizing the flow of semantic information: Words on the left are receiving information; words on the right are sending it.
+            <strong>Hover on any word</strong> to illuminate only its active attention rays!
+          </p>
+        </div>
+
+        <div class="flow-canvas-container">
+          <div class="flow-hud">
+            <span class="flow-instruction">💡 <strong>Interactive:</strong> Hover over any token chip to highlight incoming &amp; outgoing attention rays.</span>
+            <button id="reset-flow-btn" class="btn btn-secondary btn-sm">Clear Isolation</button>
+          </div>
+
+          <div class="bipartite-wrapper">
+            <!-- Left Column: Queries -->
+            <div class="flow-column left-col" id="flow-queries-col">
+              <div class="col-title">Query Tokens (Receiving Context)</div>
+              <div class="flow-chips-list" id="query-chips"></div>
+            </div>
+
+            <!-- Center: Interactive SVG Canvas -->
+            <div class="flow-canvas-wrapper">
+              <svg id="attention-flow-svg" class="flow-svg" aria-label="Attention Rays"></svg>
+            </div>
+
+            <!-- Right Column: Keys -->
+            <div class="flow-column right-col" id="flow-keys-col">
+              <div class="col-title">Key Tokens (Providing Context)</div>
+              <div class="flow-chips-list" id="key-chips"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualizer 3: Step-by-Step Mathematical Pipeline -->
+    <section id="pipeline" class="section-block">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-tag">Visualizer 3</div>
+          <h2 class="section-title">The Complete Transformer Attention Pipeline</h2>
+          <p class="section-desc">
+            How input embeddings pass through $W_Q, W_K, W_V$ projection weights to produce context-aware representations:
+          </p>
+        </div>
+
+        <div class="pipeline-cards-grid">
+          <!-- Card 1: Token Embeddings -->
+          <div class="pipe-card">
+            <div class="pipe-num">01</div>
+            <h3 class="pipe-title">Input Vectors ($X$)</h3>
+            <p class="pipe-desc">
+              Tokens enter as static or previous layer embedding vectors $X \in \mathbb{R}^{N \times d_{\text{model}}}$. 
+              At this stage, tokens have no information about their surrounding sentence.
+            </p>
+            <div class="pipe-formula">$$\vec{x}_i \in \mathbb{R}^{d_{\text{model}}}$$</div>
+          </div>
+
+          <!-- Card 2: Projections Q, K, V -->
+          <div class="pipe-card highlight">
+            <div class="pipe-num">02</div>
+            <h3 class="pipe-title">Linear Projections ($Q, K, V$)</h3>
+            <p class="pipe-desc">
+              $X$ is multiplied by three learned weight matrices:
+              <strong>$W_Q$</strong> (Queries: what am I looking for?),
+              <strong>$W_K$</strong> (Keys: what do I contain?), and
+              <strong>$W_V$</strong> (Values: what information do I pass on?).
+            </p>
+            <div class="pipe-formula">$$Q = XW_Q, \quad K = XW_K, \quad V = XW_V$$</div>
+          </div>
+
+          <!-- Card 3: Dot Product & Scaling -->
+          <div class="pipe-card">
+            <div class="pipe-num">03</div>
+            <h3 class="pipe-title">Scaled Dot Product</h3>
+            <p class="pipe-desc">
+              Compute compatibility matrix $QK^T$. To prevent dot products from growing excessively large with high dimension $d_k$ (which causes vanishing softmax gradients), divide by $\sqrt{d_k}$.
+            </p>
+            <div class="pipe-formula">$$\text{Scores} = \frac{QK^T}{\sqrt{d_k}}$$</div>
+          </div>
+
+          <!-- Card 4: Softmax & Causal Masking -->
+          <div class="pipe-card">
+            <div class="pipe-num">04</div>
+            <h3 class="pipe-title">Softmax &amp; Causal Masking</h3>
+            <p class="pipe-desc">
+              In GPT autoregressive models, upper-triangular positions are set to $-\infty$ so tokens cannot look ahead.
+              Softmax normalizes each row into a probability distribution summing to $1.000$.
+            </p>
+            <div class="pipe-formula">$$\alpha = \text{softmax}\left(\text{Scores} + M\right)$$</div>
+          </div>
+
+          <!-- Card 5: Weighted Value Sum -->
+          <div class="pipe-card">
+            <div class="pipe-num">05</div>
+            <h3 class="pipe-title">Weighted Value Sum ($O$)</h3>
+            <p class="pipe-desc">
+              Multiply attention weights $\alpha$ by the Value vectors $V$. 
+              Each word's new representation is a weighted average of all words it attended to!
+            </p>
+            <div class="pipe-formula">$$\vec{o}_i = \sum_{j=1}^N \alpha_{ij} \vec{v}_j$$</div>
+          </div>
+
+          <!-- Card 6: Multi-Head Concatenation -->
+          <div class="pipe-card">
+            <div class="pipe-num">06</div>
+            <h3 class="pipe-title">Multi-Head Fusion ($W_O$)</h3>
+            <p class="pipe-desc">
+              Outputs from all $h$ parallel attention heads are concatenated and multiplied by output matrix $W_O$, 
+              fusing syntactic, semantic, and induction perspectives together.
+            </p>
+            <div class="pipe-formula">$$\text{MHA} = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W_O$$</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Educational Deep Dive & References -->
+    <section id="insights" class="section-block bg-elevated">
+      <div class="container">
+        <div class="panel-card deep-dive-panel">
+          <div class="deep-dive-badge">📚 Linguistic &amp; Mechanistic Insight</div>
+          <h2 class="deep-dive-title" id="scenario-title">Winograd Schema: The Tired Animal</h2>
+          
+          <div class="deep-dive-content" id="scenario-explanation">
+            In the Coreference Head (Head 1), the query vector of 'it' has a high dot product with the key vector of 'animal'. 
+            This demonstrates how self-attention resolves ambiguous pronouns by integrating contextual cues from the entire sentence.
+          </div>
+
+          <div class="key-pairs-callout">
+            <h4 class="callout-heading">Key Attention Pairings in this Scenario:</h4>
+            <div class="key-pairs-grid" id="key-pairs-display">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+
+          <div class="classic-papers-grid">
+            <div class="paper-citation">
+              <strong>"Attention Is All You Need" (2017)</strong>
+              <p>Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin.</p>
+            </div>
+            <div class="paper-citation">
+              <strong>"In-context Learning and Induction Heads" (2022)</strong>
+              <p>Catherine Olsson, Nelson Elhage, Neel Nanda, Nicholas Joseph, Tom Henighan, Anthropic Transformer Circuits Team.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container footer-content">
+      <p>
+        Interactive Multi-Head Self-Attention Lab. Zero backend required &mdash; runs 100% client-side for GitHub Pages.
+      </p>
+      <div class="footer-links">
+        <a href="https://github.com/martianunlimited/llm_attention" target="_blank" rel="noopener">GitHub Repository</a>
+        <span>•</span>
+        <a href="https://martianunlimited.github.io/llm_tokenizer/" target="_blank" rel="noopener">🔤 Tokenizer Demo</a>
+        <span>•</span>
+        <a href="https://martianunlimited.github.io/llm_embedding/" target="_blank" rel="noopener">🧭 Embeddings Demo</a>
+        <span>•</span>
+        <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">Illustrated Transformer</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
